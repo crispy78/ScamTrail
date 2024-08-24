@@ -13,6 +13,13 @@ ScamTrail is a powerful tool designed to assist in the investigation of scam and
 - Detect Cloudflare usage
 - Generate comprehensive PDF reports
 
+![scamtrail-report_page-0001](https://github.com/user-attachments/assets/d032b01c-a6c1-46b3-a7de-830d31c70f2f)
+
+![scamtrail-report_page-0002](https://github.com/user-attachments/assets/b00faf4e-979e-4d02-a5d2-cfa47c135eef)
+
+![scamtrail-report_page-0003](https://github.com/user-attachments/assets/d945e738-24ff-4823-a723-c81e400dba7c)
+
+
 ## Installation
 
 ### Prerequisites
