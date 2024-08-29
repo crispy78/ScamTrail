@@ -15,6 +15,8 @@ from jinja2 import Environment, FileSystemLoader
 import aiofiles
 import requests
 from requests.exceptions import RequestException
+from bs4 import BeautifulSoup
+import re
 
 # Load environment variables
 load_dotenv()
@@ -25,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 MAX_REDIRECTS = int(os.getenv('MAX_REDIRECTS', 10))
-PDF_OUTPUT_FILE = os.getenv('PDF_OUTPUT_FILE', 'scamtrail-report.pdf')
 
 class URLTracer:
     def __init__(self):
@@ -168,87 +169,168 @@ class URLTracer:
             logger.error(f"Error checking Cloudflare usage for {domain}: {e}")
             return False
 
+    async def analyze_content(self, url: str) -> Dict[str, Any]:
+        try:
+            async with self.session.get(url, allow_redirects=True) as response:
+                if response.status == 200:
+                    content = await response.text()
+                    soup = BeautifulSoup(content, 'html.parser')
+                    
+                    # Check for common scam/phishing indicators
+                    indicators = {
+                        'password_field': bool(soup.find('input', {'type': 'password'})),
+                        'login_form': bool(soup.find('form')),
+                        'suspicious_keywords': self.check_suspicious_keywords(content),
+                        'external_links': len(soup.find_all('a', href=re.compile('^https?://'))),
+                        'images': len(soup.find_all('img')),
+                        'scripts': len(soup.find_all('script')),
+                    }
+                    
+                    return indicators
+                else:
+                    logger.warning(f"Failed to fetch content from {url}. Status code: {response.status}")
+                    return {}
+        except Exception as e:
+            logger.error(f"Error analyzing content for {url}: {e}")
+            return {}
+
+    @staticmethod
+    def check_suspicious_keywords(content: str) -> List[str]:
+        suspicious_keywords = [
+            'login', 'password', 'credit card', 'social security',
+            'bank account', 'urgent', 'verify', 'suspended', 'limited time'
+        ]
+        return [keyword for keyword in suspicious_keywords if keyword.lower() in content.lower()]
+
 class ReportGenerator:
     def __init__(self):
         self.env = Environment(loader=FileSystemLoader('templates'))
         self.template = self.env.get_template('report_template.html')
 
-    async def generate_report(self, data: Dict[str, Any]) -> None:
+    async def generate_report(self, data: Dict[str, Any], output_file: str) -> None:
         html_content = self.template.render(data)
         
-        async with aiofiles.open('report.html', 'w') as f:
+        async with aiofiles.open('temp_report.html', 'w') as f:
             await f.write(html_content)
 
         # Convert HTML to PDF using WeasyPrint
-        HTML('report.html').write_pdf(PDF_OUTPUT_FILE)
-        logger.info(f"Report saved to {PDF_OUTPUT_FILE}")
+        HTML('temp_report.html').write_pdf(output_file)
+        logger.info(f"Report saved to {output_file}")
+
+        # Clean up temporary HTML file
+        os.remove('temp_report.html')
+
+async def analyze_single_url(url: str, tracer: URLTracer) -> Dict[str, Any]:
+    url = URLTracer.ensure_scheme(url)
+    redirects = await tracer.follow_redirects(url)
+    final_url = redirects[-1]
+
+    tasks = []
+    for redirect in redirects:
+        tasks.append(tracer.get_whois_info(redirect))
+        tasks.append(tracer.get_dns_info(redirect))
+        tasks.append(tracer.get_ip_address(redirect))
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    whois_infos = [r if not isinstance(r, Exception) else None for r in results[0::3]]
+    dns_infos = [r if not isinstance(r, Exception) else None for r in results[1::3]]
+    ip_addresses = [r if not isinstance(r, Exception) else None for r in results[2::3]]
+
+    # Process results
+    cloudflare_info = {}
+    reverse_dns_info = {}
+    ip_geolocations = {}
+
+    for url, ip in zip(redirects, ip_addresses):
+        if ip:
+            domain = URLTracer.extract_domain(url)
+            cloudflare_info[domain] = await tracer.is_cloudflare_domain(domain)
+            reverse_dns = await tracer.reverse_dns_lookup(ip)
+            reverse_dns_info[ip] = reverse_dns if reverse_dns else []
+            geolocation = await tracer.get_ip_geolocation(ip)
+            ip_geolocations[ip] = geolocation
+
+    # Analyze content
+    content_analysis = await tracer.analyze_content(final_url)
+
+    # Prepare data for report
+    report_data = {
+        'original_url': url,
+        'redirects': redirects,
+        'whois_infos': [{'domain': URLTracer.extract_domain(url), 'info': info} for url, info in zip(redirects, whois_infos)],
+        'dns_infos': [info for info in dns_infos if info is not None],
+        'ip_addresses': ip_addresses,
+        'final_url': final_url,
+        'cloudflare_info': cloudflare_info,
+        'reverse_dns_info': reverse_dns_info,
+        'ip_geolocations': ip_geolocations,
+        'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC'),
+        'domain_age': URLTracer.calculate_domain_age(whois_infos[0].get('creation_date') if whois_infos[0] else None),
+        'uses_cloudflare': cloudflare_info.get(URLTracer.extract_domain(final_url), False),
+        'content_analysis': content_analysis
+    }
+
+    return report_data
 
 async def main():
-    url = input("Enter the URL to trace: ").strip()
-    
+    print("Welcome to the enhanced ScamTrail script!")
+    print("1. Analyze a single URL")
+    print("2. Perform bulk analysis")
+    choice = input("Enter your choice (1 or 2): ").strip()
+
     async with URLTracer() as tracer:
-        url = URLTracer.ensure_scheme(url)
-        redirects = await tracer.follow_redirects(url)
-        final_url = redirects[-1]
+        if choice == '1':
+            url = input("Enter the URL to trace: ").strip()
+            report_data = await analyze_single_url(url, tracer)
+            
+            # Generate report
+            report_generator = ReportGenerator()
+            output_file = f"scamtrail_report_{URLTracer.extract_domain(url)}.pdf"
+            await report_generator.generate_report(report_data, output_file)
 
-        tasks = []
-        for redirect in redirects:
-            tasks.append(tracer.get_whois_info(redirect))
-            tasks.append(tracer.get_dns_info(redirect))
-            tasks.append(tracer.get_ip_address(redirect))
+            # Print out the key information
+            print(f"\nAnalysis Results for {url}:")
+            print(f"Report saved to: {output_file}")
+            print(f"Final destination: {report_data['final_url']}")
+            print(f"Number of redirects: {len(report_data['redirects']) - 1}")
+            print(f"Domain age: {report_data['domain_age']}")
+            
+            final_ip = report_data['ip_addresses'][-1] if report_data['ip_addresses'] else None
+            if final_ip and final_ip in report_data['ip_geolocations']:
+                print(f"Geographical location: {report_data['ip_geolocations'][final_ip]}")
+            else:
+                print("Unable to determine the geographical location.")
+            
+            print(f"Uses CloudFlare: {'Yes' if report_data['uses_cloudflare'] else 'No'}")
+            
+            print("\nContent Analysis:")
+            for key, value in report_data['content_analysis'].items():
+                if key == 'suspicious_keywords':
+                    print(f"- Suspicious Keywords: {', '.join(value) if value else 'None found'}")
+                else:
+                    print(f"- {key.replace('_', ' ').title()}: {value}")
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        elif choice == '2':
+            urls = []
+            print("Enter URLs for bulk analysis (one per line, enter a blank line to finish):")
+            while True:
+                url = input().strip()
+                if not url:
+                    break
+                urls.append(url)
 
-        whois_infos = [r if not isinstance(r, Exception) else None for r in results[0::3]]
-        dns_infos = [r if not isinstance(r, Exception) else None for r in results[1::3]]
-        ip_addresses = [r if not isinstance(r, Exception) else None for r in results[2::3]]
+            report_generator = ReportGenerator()
+            for url in urls:
+                report_data = await analyze_single_url(url, tracer)
+                output_file = f"scamtrail_report_{URLTracer.extract_domain(url)}.pdf"
+                await report_generator.generate_report(report_data, output_file)
+                print(f"Analysis completed for {url}. Report saved to {output_file}")
 
-        # Process results
-        cloudflare_info = {}
-        reverse_dns_info = {}
-        ip_geolocations = {}
+            print(f"\nBulk analysis completed. Individual reports have been generated for each URL.")
 
-        for url, ip in zip(redirects, ip_addresses):
-            if ip:
-                domain = URLTracer.extract_domain(url)
-                cloudflare_info[domain] = await tracer.is_cloudflare_domain(domain)
-                reverse_dns = await tracer.reverse_dns_lookup(ip)
-                reverse_dns_info[ip] = reverse_dns if reverse_dns else []
-                geolocation = await tracer.get_ip_geolocation(ip)
-                ip_geolocations[ip] = geolocation
-                logger.info(f"URL: {url}, IP: {ip}, Geolocation: {geolocation}")
-
-        # Prepare data for report
-        report_data = {
-            'redirects': redirects,
-            'whois_infos': [{'domain': URLTracer.extract_domain(url), 'info': info} for url, info in zip(redirects, whois_infos)],
-            'dns_infos': [info for info in dns_infos if info is not None],
-            'ip_addresses': ip_addresses,
-            'final_url': final_url,
-            'cloudflare_info': cloudflare_info,
-            'reverse_dns_info': reverse_dns_info,
-            'ip_geolocations': ip_geolocations,
-            'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC'),
-            'domain_age': URLTracer.calculate_domain_age(whois_infos[0].get('creation_date') if whois_infos[0] else None),
-            'uses_cloudflare': cloudflare_info.get(URLTracer.extract_domain(final_url), False)
-        }
-
-        # Generate report
-        report_generator = ReportGenerator()
-        await report_generator.generate_report(report_data)
-
-        # Print out the key information
-        print(f"The destination of the URL you've entered ({url}) is {final_url}")
-        print(f"It used {len(redirects) - 1} redirects to get to its destination.")
-        print(f"The domain has been registered for {report_data['domain_age']}.")
-        
-        final_ip = ip_addresses[-1] if ip_addresses else None
-        if final_ip and final_ip in ip_geolocations:
-            print(f"The geographical location of the site is {ip_geolocations[final_ip]}.")
         else:
-            print("Unable to determine the geographical location of the site.")
-        
-        print(f"The site {"uses" if report_data['uses_cloudflare'] else "doesn't use"} CloudFlare for obfuscation or protection.")
+            print("Invalid choice. Please run the script again and choose 1 or 2.")
 
 if __name__ == "__main__":
     asyncio.run(main())
