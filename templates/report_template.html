@@ -152,6 +152,19 @@
 
     <div class="info-section">
         <br>
+        <h2>Content Analysis</h2>
+        <ul>
+            <li><b>Password Field:</b> {{ content_analysis.password_field }}</li>
+            <li><b>Login Form:</b> {{ content_analysis.login_form }}</li>
+            <li><b>Suspicious Keywords:</b> {{ content_analysis.suspicious_keywords|join(', ') if content_analysis.suspicious_keywords else 'None found' }}</li>
+            <li><b>External Links:</b> {{ content_analysis.external_links }}</li>
+            <li><b>Images:</b> {{ content_analysis.images }}</li>
+            <li><b>Scripts:</b> {{ content_analysis.scripts }}</li>
+        </ul>
+    </div>
+
+    <div class="info-section">
+        <br>
         <h2>Report Usage</h2>
         <p>The information in this report can be used to take action against potentially fraudulent or malicious websites:</p>
         <ul>
