@@ -1,7 +1,7 @@
-##ScamTrail
+## ScamTrail
 ScamTrail is a Python-based tool designed to analyze URLs for potential scams or phishing activity. It performs a comprehensive check by following redirects, retrieving WHOIS and DNS information, analyzing content for suspicious indicators, and generating detailed PDF reports.
 
-##Features
+## Features
 - **Follow URL Redirects:** Track and display all redirects from the initial URL to the final destination.
 - **WHOIS Lookup:** Retrieve domain registration data, including the domain's creation date and registrar.
 - **DNS Lookup:** Fetch A, NS, and CNAME records for the domain.
@@ -12,20 +12,20 @@ ScamTrail is a Python-based tool designed to analyze URLs for potential scams or
 - **Content Analysis:** Detect suspicious indicators, such as password fields, login forms, and keywords commonly used in phishing sites.
 - **PDF Report Generation:** Create a detailed PDF report of the URL analysis, containing all collected data and insights.
 
-##Installation
+## Installation
 Prerequisites
 - **Python 3.7+**
 - **pip (Python package manager)**
 
-###Install the Required Dependencies
+### Install the Required Dependencies
 Run the following command to install all required Python packages:
 
 ```
 pip install asyncio aiohttp aiodns python-whois weasyprint pycountry python-dotenv Jinja2 aiofiles requests beautifulsoup4
 ```
 
-##Usage
-###Command-Line Interface
+## Usage
+### Command-Line Interface
 ScamTrail supports the analysis of a single URL or multiple URLs in bulk. Here's how to use it via the command line.
 
 1. **Run the Script:** Navigate to the directory containing scamtrail.py and run:
@@ -55,7 +55,7 @@ https://example2.com
 ```
 The tool will analyze each URL in sequence, generating individual reports for each one.
 
-##Report Details##
+## Report Details
 The generated PDF report includes the following information:
 
 - Redirect Chain: A list of all redirects encountered while tracing the URL.
@@ -67,7 +67,7 @@ The generated PDF report includes the following information:
 - Cloudflare Usage: Whether the domain uses Cloudflare services.
 - Content Analysis: Details on suspicious keywords, login forms, password fields, and more.
 
-##Use Cases##
+## Use Cases
 ScamTrail is ideal for:
 - Security Researchers: Investigating suspicious URLs and identifying potential phishing sites.
 - Incident Response Teams: Generating reports on malicious links for further action.
@@ -93,7 +93,7 @@ Content Analysis:
 - Scripts: 5
 ```
 
-##Intended Use##
+## Intended Use
 ScamTrail is designed to be used by:
 
 - Security Analysts: To investigate URLs and identify scam or phishing sites.
@@ -101,5 +101,5 @@ ScamTrail is designed to be used by:
 - Law Enforcement: For tracking suspicious domains and documenting malicious activities.
 Make sure to comply with all relevant laws and ethical guidelines when using ScamTrail for investigations.
 
-##License##
+## License
 This project is licensed under the MIT License.
