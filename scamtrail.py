@@ -225,11 +225,19 @@ async def analyze_single_url(url: str, tracer: URLTracer) -> Dict[str, Any]:
     redirects = await tracer.follow_redirects(url)
     final_url = redirects[-1]
 
+    # Use a set to keep track of unique domains
+    unique_domains = set()
     tasks = []
+    unique_redirects = []
+
     for redirect in redirects:
-        tasks.append(tracer.get_whois_info(redirect))
-        tasks.append(tracer.get_dns_info(redirect))
-        tasks.append(tracer.get_ip_address(redirect))
+        domain = URLTracer.extract_domain(redirect)
+        if domain not in unique_domains:
+            unique_domains.add(domain)
+            unique_redirects.append(redirect)
+            tasks.append(tracer.get_whois_info(redirect))
+            tasks.append(tracer.get_dns_info(redirect))
+            tasks.append(tracer.get_ip_address(redirect))
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -242,7 +250,7 @@ async def analyze_single_url(url: str, tracer: URLTracer) -> Dict[str, Any]:
     reverse_dns_info = {}
     ip_geolocations = {}
 
-    for url, ip in zip(redirects, ip_addresses):
+    for url, ip in zip(unique_redirects, ip_addresses):
         if ip:
             domain = URLTracer.extract_domain(url)
             cloudflare_info[domain] = await tracer.is_cloudflare_domain(domain)
@@ -258,7 +266,7 @@ async def analyze_single_url(url: str, tracer: URLTracer) -> Dict[str, Any]:
     report_data = {
         'original_url': url,
         'redirects': redirects,
-        'whois_infos': [{'domain': URLTracer.extract_domain(url), 'info': info} for url, info in zip(redirects, whois_infos)],
+        'whois_infos': [{'domain': URLTracer.extract_domain(url), 'info': info} for url, info in zip(unique_redirects, whois_infos)],
         'dns_infos': [info for info in dns_infos if info is not None],
         'ip_addresses': ip_addresses,
         'final_url': final_url,
