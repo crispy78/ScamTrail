@@ -1,96 +1,105 @@
-# ScamTrail
+##ScamTrail
+ScamTrail is a Python-based tool designed to analyze URLs for potential scams or phishing activity. It performs a comprehensive check by following redirects, retrieving WHOIS and DNS information, analyzing content for suspicious indicators, and generating detailed PDF reports.
 
-ScamTrail is a powerful tool designed to assist in the investigation of scam and/or phishing websites. It provides valuable information about suspicious URLs, helping investigators gather leads on domain registrars and hosting providers to report malicious activities. Due to my lack of knowledge with Python I developed the script with help of OpenAI's [ChatGPT](https://chat.openai.com) and Anthropic's [Claude.ai](https://www.claude.ai).
+##Features
+- **Follow URL Redirects:** Track and display all redirects from the initial URL to the final destination.
+- **WHOIS Lookup:** Retrieve domain registration data, including the domain's creation date and registrar.
+- **DNS Lookup:** Fetch A, NS, and CNAME records for the domain.
+- **IP Address and Geolocation:** Resolve the IP address of the domain and attempt to locate its geographical position.
+- **Reverse DNS Lookup:** Identify associated hostnames for resolved IP addresses.
+- **Domain Age Calculation:** Estimate the age of the domain based on its WHOIS registration data.
+- **Cloudflare Detection:** Identify whether the domain is using Cloudflare for DNS services.
+- **Content Analysis:** Detect suspicious indicators, such as password fields, login forms, and keywords commonly used in phishing sites.
+- **PDF Report Generation:** Create a detailed PDF report of the URL analysis, containing all collected data and insights.
 
-## Features
+##Installation
+Prerequisites
+- **Python 3.7+**
+- **pip (Python package manager)**
 
-- Follow and analyze URL redirects
-- Retrieve WHOIS information for domains
-- Perform DNS lookups (A, NS, and CNAME records)
-- Get IP address information and geolocation
-- Perform reverse DNS lookups
-- Calculate domain age
-- Detect Cloudflare usage
-- Generate comprehensive PDF reports
+###Install the Required Dependencies
+Run the following command to install all required Python packages:
 
-![scamtrail-report_page-0001](https://github.com/user-attachments/assets/d032b01c-a6c1-46b3-a7de-830d31c70f2f)
+```
+pip install asyncio aiohttp aiodns python-whois weasyprint pycountry python-dotenv Jinja2 aiofiles requests beautifulsoup4
+```
 
-![scamtrail-report_page-0002](https://github.com/user-attachments/assets/b00faf4e-979e-4d02-a5d2-cfa47c135eef)
+##Usage
+###Command-Line Interface
+ScamTrail supports the analysis of a single URL or multiple URLs in bulk. Here's how to use it via the command line.
 
-![scamtrail-report_page-0003](https://github.com/user-attachments/assets/d945e738-24ff-4823-a723-c81e400dba7c)
+1. **Run the Script:** Navigate to the directory containing scamtrail.py and run:
+```
+python scamtrail.py
+```
+2. **Choose an Option:** After starting the script, you'll be prompted to choose between two options:
+   - Option 1: Analyze a single URL.
+   - Option 2: Perform a bulk analysis of multiple URLs.
+3. **Analyze a Single URL:** After selecting option 1, you will be prompted to enter a URL. For example:
 
+```
+Enter the URL to trace: https://example.com
+```
+The tool will:
+- Follow any redirects.
+- Retrieve WHOIS and DNS information.
+- Resolve the IP address and perform reverse DNS lookups.
+- Detect if the domain uses Cloudflare.
+- Analyze the page content for suspicious indicators.
+- Generate a PDF report with the results.
+4. **Perform Bulk Analysis:** After selecting option 2, you can enter multiple URLs (one per line). To finish inputting URLs, press Enter on a blank line. Example:
+```
+Enter URLs for bulk analysis (one per line, enter a blank line to finish):
+https://example1.com
+https://example2.com
+```
+The tool will analyze each URL in sequence, generating individual reports for each one.
 
-## Installation
+##Report Details##
+The generated PDF report includes the following information:
 
-### Prerequisites
+- Redirect Chain: A list of all redirects encountered while tracing the URL.
+- WHOIS Information: Registration data for each domain in the redirect chain.
+- DNS Records: A, NS, and CNAME records for the domain.
+- IP Information: Resolved IP address and reverse DNS lookup results.
+- Geolocation: The estimated geographical location of the IP address.
+- Domain Age: The calculated age of the domain.
+- Cloudflare Usage: Whether the domain uses Cloudflare services.
+- Content Analysis: Details on suspicious keywords, login forms, password fields, and more.
 
-- Python 3.7+
-- pip (Python package manager)
+##Use Cases##
+ScamTrail is ideal for:
+- Security Researchers: Investigating suspicious URLs and identifying potential phishing sites.
+- Incident Response Teams: Generating reports on malicious links for further action.
+- Domain Owners: Checking how their domain is being used or if it’s potentially compromised.
+- Example Output (Command-Line Summary)
+- After running the analysis, ScamTrail will display a summary like this in the terminal:
 
-### Windows
+```
+Analysis Results for https://example.com:
+Report saved to: scamtrail_report_example.com.pdf
+Final destination: https://final.example.com
+Number of redirects: 2
+Domain age: 5 years, 2 months, 15 days
+Geographical location: San Francisco, California, United States
+Uses CloudFlare: Yes
 
-1. Install Python from the [official website](https://www.python.org/downloads/windows/).
-2. Open Command Prompt and run:
-   ```
-   pip install asyncio aiohttp aiodns python-whois weasyprint pycountry python-dotenv Jinja2 aiofiles requests
-   ```
+Content Analysis:
+- Password Field: False
+- Login Form: True
+- Suspicious Keywords: login, password, credit card
+- External Links: 15
+- Images: 8
+- Scripts: 5
+```
 
-### Linux
+##Intended Use##
+ScamTrail is designed to be used by:
 
-1. Install Python and pip using your distribution's package manager. For Ubuntu/Debian:
-   ```
-   sudo apt update
-   sudo apt install python3 python3-pip
-   ```
-2. Install the required packages:
-   ```
-   pip3 install asyncio aiohttp aiodns python-whois weasyprint pycountry python-dotenv Jinja2 aiofiles requests
-   ```
+- Security Analysts: To investigate URLs and identify scam or phishing sites.
+- Penetration Testers: As part of a toolkit to assess the security of URLs.
+- Law Enforcement: For tracking suspicious domains and documenting malicious activities.
+Make sure to comply with all relevant laws and ethical guidelines when using ScamTrail for investigations.
 
-## Usage
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/crispy78/ScamTrail.git
-   cd scamtrail
-   ```
-2. Run the script:
-   ```
-   python scamtrail.py
-   ```
-3. Enter the URL you want to investigate when prompted.
-4. The script will generate a PDF report with the results.
-
-## GitHub Codespaces
-
-To run ScamTrail in GitHub Codespaces:
-
-1. Open the repository in GitHub Codespaces.
-2. In the terminal, install the required packages:
-   ```
-   pip install asyncio aiohttp aiodns python-whois weasyprint pycountry python-dotenv Jinja2 aiofiles requests
-   ```
-3. Run the script:
-   ```
-   python scamtrail.py
-   ```
-
-## Intended Use
-
-ScamTrail is designed for the investigation of suspected scam and phishing websites. It provides investigators with valuable information to:
-
-- Identify the true destination of suspicious links
-- Gather information about domain registration and hosting
-- Locate potential perpetrators geographically
-- Detect obfuscation techniques like Cloudflare usage
-
-This information can be used to:
-- Report malicious activities to domain registrars and hosting providers
-- Assist law enforcement in their investigations
-- Educate users about ongoing scams and phishing attempts
-
-Remember to always use this tool ethically and in compliance with applicable laws and regulations.
-
-## Contributing
-
-Contributions to improve ScamTrail are welcome. Please feel free to submit pull requests or open issues to discuss potential enhancements.
+##License##
+This project is licensed under the MIT License.
